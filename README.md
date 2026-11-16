@@ -174,9 +174,7 @@ Gunakan `flutter devices` untuk melihat daftar perangkat yang tersedia (Chrome, 
 - Menguji ketiga tombol satu per satu dan memastikan teks `SnackBar` sesuai.
 - Menjalankan `flutter analyze` dan memastikan hasilnya `No issues found!`.
 - Menjalankan sendiri perintah Git di terminal dan memeriksa hasil push di GitHub.
-- [ISI: perubahan atau perbaikan manual lain yang benar-benar kamu lakukan, misalnya hasil membaca ulang dan memahami jawaban README.]
 
 **Keterbatasan AI yang saya temui:**
 - Saran awal untuk membagi commit memakai `git add -p` ternyata terlalu rumit untuk kondisi saya, karena perubahan data diri dan perubahan warna berada dalam satu potongan (hunk). Saya sempat salah memasukkan perintah ke prompt interaktif tersebut, lalu keluar dengan `q` dan beralih ke satu commit dengan pesan deskriptif.
 - AI tidak dapat melihat proyek saya secara langsung, sehingga ia bergantung pada output dan kode yang saya tempelkan. Karena itu semua hasil saya uji sendiri di perangkat.
-- [ISI: keterbatasan lain yang kamu alami, jika ada.]
