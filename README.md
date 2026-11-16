@@ -155,6 +155,42 @@ Gunakan `flutter devices` untuk melihat daftar perangkat yang tersedia (Chrome, 
    - Full restart dibutuhkan jika perubahan menyentuh sisi native atau konfigurasi build, misalnya menambah paket atau dependensi baru di `pubspec.yaml`, menambah aset, atau mengubah kode di folder `android/` atau `ios/` seperti `AndroidManifest.xml`.
 
 ---
+### Tugas 8
+
+1. **Perbedaan `push()`, `pushReplacement()`, `pop()`, dan alur opsi Home**
+
+   Navigator mengelola halaman sebagai stack (tumpukan route).
+
+   - `Navigator.push()` menambahkan route baru di atas stack. Route lama tetap ada di bawahnya, sehingga tombol Back mengembalikan pengguna ke halaman sebelumnya.
+   - `Navigator.pushReplacement()` mengganti route teratas dengan route baru. Route lama dibuang dari stack, sedangkan route di bawahnya tidak berubah.
+   - `Navigator.pop()` membuang route teratas dan kembali ke route di bawahnya. Di proyek ini `pop()` dipakai untuk menutup dialog ringkasan saat tombol OK ditekan.
+
+   Untuk membuka formulir dari kartu aksi saya memakai `Navigator.push()`, supaya pengguna bisa kembali ke halaman utama dengan tombol Back bawaan perangkat atau browser.
+
+   Opsi **Home** di drawer memakai `Navigator.pushReplacement()` ke `MyHomePage()`. Halaman formulir yang sedang tampil diganti dengan halaman utama, jadi pengguna langsung sampai di beranda. Karena `pushReplacement()` hanya mengganti route teratas, route di bawahnya tidak ikut berubah. Kalau formulir sebelumnya dibuka lewat kartu aksi (`push()`), halaman utama yang lama masih ada di bawah stack.
+
+2. **Scaffold, AppBar, Drawer, dan konsistensi struktur halaman**
+
+   `Scaffold` menyediakan kerangka halaman Material dengan slot `appBar`, `drawer`, dan `body`. Semua halaman di aplikasi ini (halaman utama, formulir proyek, formulir pengalaman) memakai kerangka yang sama, sehingga letak judul, ikon menu (☰), dan area isi selalu konsisten. Komponen `LeftDrawer` dibuat sekali di `lib/widgets/left_drawer.dart` lalu dipakai di semua halaman lewat `drawer: const LeftDrawer()`. Dengan begitu menu navigasi selalu sama dan tidak perlu ditulis ulang.
+
+   Contoh tema warna yang dipakai di lebih dari satu halaman: `Colors.indigo` digunakan pada `AppBar` halaman Add Project Form dan Add Experience Form, pada `DrawerHeader`, dan pada tombol Simpan. Teks putih (`Colors.white`) dipakai di semua `AppBar` agar kontras.
+
+3. **Alasan pemilihan tata letak formulir, serta peran widget jarak dan penggulir**
+
+   Formulir disusun sebagai `Form` → `SingleChildScrollView` → `Column`, dengan `crossAxisAlignment: CrossAxisAlignment.start`. `Column` dipilih karena input formulir memang berurutan dari atas ke bawah. Tiap input dibungkus `Padding` (8 piksel) agar tidak menempel satu sama lain atau ke tepi layar, dan tombol Simpan ditempatkan dengan `Align` dan `Padding` di bagian bawah. Kolom deskripsi memakai `maxLines: 5` supaya ruang mengetiknya lebih lega.
+
+   `SingleChildScrollView` penting ketika ruang layar terbatas. `Column` tidak bisa di-scroll sendiri, jadi tanpa pembungkus ini formulir yang lebih tinggi dari layar (atau yang tertutup papan ketik) akan overflow dan tombol Simpan tidak bisa dijangkau. Masalah serupa pernah saya temui di halaman utama. Setelah menambah kartu keempat (Tambah Pengalaman), Chrome menampilkan pesan "BOTTOM OVERFLOWED BY 208 PIXELS". Saya memperbaikinya dengan membungkus `body` dengan `SingleChildScrollView` dan menonaktifkan scroll milik `GridView` (`NeverScrollableScrollPhysics`) supaya hanya halaman yang di-scroll.
+
+4. **Peran `GlobalKey<FormState>`, `validator`, dan `validate()`**
+
+   - `GlobalKey<FormState>` (`_formKey`) adalah pegangan ke state widget `Form`. Dengan key ini, tombol Simpan, yang berada di luar widget input, bisa memanggil operasi pada seluruh form, seperti `validate()` dan `reset()`.
+   - `validator` adalah fungsi yang dimiliki setiap `TextFormField`. Ia menerima isi input dan mengembalikan teks pesan kesalahan jika tidak valid, atau `null` jika valid. Pesan itu ditampilkan di bawah kolom terkait.
+   - `validate()` menjalankan semua `validator` sekaligus dan menghasilkan `true` hanya jika semuanya mengembalikan `null`. Di proyek ini dialog ringkasan hanya dibuka di dalam `if (_formKey.currentState!.validate())`.
+
+   Contoh nilai yang ditolak: judul pengalaman yang hanya berisi spasi (`"   "`). Validator memakai `value.trim().isEmpty` sehingga isian itu dianggap kosong. Contoh lain: tanggal selesai yang lebih awal daripada tanggal mulai, yang ditolak lewat `_endDate!.isBefore(_startDate!)`.
+
+   Memilih jenis input atau papan ketik saja tidak cukup karena itu hanya mengatur tampilan dan kemudahan, bukan aturan data. Misalnya `keyboardType: TextInputType.url` hanya mengubah bentuk papan ketik, sehingga pengguna tetap bisa mengetik `abc`, dan validator yang memeriksa skema `http`/`https` tetap diperlukan. Begitu pula `showDatePicker()` memastikan format tanggal benar, tetapi tidak menjamin tanggal selesai tidak mendahului tanggal mulai.
+
 
 ## AI Disclosure
 
@@ -178,3 +214,28 @@ Gunakan `flutter devices` untuk melihat daftar perangkat yang tersedia (Chrome, 
 **Keterbatasan AI yang saya temui:**
 - Saran awal untuk membagi commit memakai `git add -p` ternyata terlalu rumit untuk kondisi saya, karena perubahan data diri dan perubahan warna berada dalam satu potongan (hunk). Saya sempat salah memasukkan perintah ke prompt interaktif tersebut, lalu keluar dengan `q` dan beralih ke satu commit dengan pesan deskriptif.
 - AI tidak dapat melihat proyek saya secara langsung, sehingga ia bergantung pada output dan kode yang saya tempelkan. Karena itu semua hasil saya uji sendiri di perangkat.
+
+### AI Disclosure Tugas 8
+
+**Tools yang digunakan:** Claude (Anthropic) lewat antarmuka chat. Saya tidak memakai coding agent atau tool AI lain.
+
+**Strategi prompting:** Saya mengunggah PDF soal, lalu meminta Claude memandu pengerjaan langkah demi langkah. Setelah tiap langkah saya mengirim hasilnya (output `flutter analyze`, screenshot aplikasi di Chrome, isi file Dart, dan output Git), lalu Claude memberi langkah berikutnya atau membantu mendiagnosis masalah. Saya juga menempelkan `models.py` dari proyek Django saya agar form dipetakan ke model `Experience` yang sebenarnya.
+
+**Bagian yang dibantu AI:**
+- Merangkum checklist tugas dan menyusun urutan pengerjaan.
+- Memetakan field model `Experience` ke input formulir (judul, organisasi, kategori, tanggal mulai dan selesai, "masih berlangsung", URL thumbnail) beserta aturan validasinya.
+- Menyusun draf kode `experience_form.dart` (validasi, date picker, dialog ringkasan, reset form), tombol kartu, dan opsi drawer secara bertahap.
+- Mendiagnosis error `BOTTOM OVERFLOWED` pada halaman utama dan menyarankan perbaikannya.
+- Menyusun rencana commit (conventional commits) dan draf awal jawaban refleksi ini.
+
+**Bagian yang saya kerjakan dan verifikasi sendiri:**
+- Memilih bagian Pengalaman dan memberikan model Django sebagai dasar field.
+- Menempatkan kode ke berkas yang benar (`lib/screens/`, `lib/widgets/`) dan menjalankan `flutter analyze` hingga `No issues found!`.
+- Menguji manual di Chrome: akses form dari kartu dan drawer, kolom kosong, tanggal selesai sebelum tanggal mulai, checkbox "Masih berlangsung", URL tidak valid, dialog ringkasan dan reset form, serta navigasi Home.
+- Menemukan bug overflow saat menguji, lalu memverifikasi perbaikannya dengan melebarkan jendela browser.
+- Menjalankan sendiri perintah Git di terminal dan membaca serta menyunting jawaban refleksi.
+
+**Keterbatasan AI yang saya temui:**
+- AI tidak dapat melihat proyek saya langsung. Instruksi seperti "tempel di antara dua baris" ternyata ambigu, dan tombol Simpan sempat tidak tertempel di posisi yang benar. Solusinya: saya mengirim isi file lengkap, lalu AI memeriksa dan memberi versi file utuh.
+- Usulan field pertama dibuat sebelum AI melihat model Django saya, sehingga perlu disesuaikan. Misalnya `started_at` ternyata `auto_now_add` dan bukan input pengguna, sehingga tanggal mulai diambil dari `start_year`/`start_month`.
+- AI tidak menjalankan aplikasi. Bug overflow baru terlihat setelah saya mengujinya di Chrome, dan bug itu sempat tampak hilang hanya karena jendela browser lebih sempit. Jadi pengujian di berbagai ukuran layar tetap harus saya lakukan sendiri.
