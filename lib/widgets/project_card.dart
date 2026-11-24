@@ -1,7 +1,10 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/screens/experience_form.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/screens/project_list_screen.dart';
-import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
+import 'package:provider/provider.dart';
 
 class ItemHomepage {
   final String name;
@@ -24,7 +27,27 @@ class ItemCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         // Aksi ketika kartu ditekan oleh pengguna.
-        onTap: () {
+        onTap: () async {
+          if (item.name == "Logout") {
+            final authState = context.read<AuthState>();
+            if (!authState.isLoggedIn) {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  const SnackBar(content: Text('You are not logged in.')),
+                );
+              return;
+            }
+            await authState.logout();
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                const SnackBar(content: Text('Logged out successfully.')),
+              );
+            return;
+          }
+
           // Menampilkan SnackBar dengan pesan interaktif.
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -33,6 +56,7 @@ class ItemCard extends StatelessWidget {
                 content: Text("Kamu telah menekan tombol ${item.name}!"),
               ),
             );
+
           // Navigate ke halaman yang sesuai
           if (item.name == "Lihat Proyek") {
             Navigator.push(
@@ -41,14 +65,14 @@ class ItemCard extends StatelessWidget {
                 builder: (context) => const ProjectListScreen(),
               ),
             );
-          }
-          if (item.name == "Tambah Proyek") {
+          } else if (item.name == "Tambah Proyek") {
+            final ok = await ensureLoggedIn(context);
+            if (!ok || !context.mounted) return;
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ProjectFormPage()),
             );
-          }
-          if (item.name == "Tambah Pengalaman") {
+          } else if (item.name == "Tambah Pengalaman") {
             Navigator.push(
               context,
               MaterialPageRoute(
