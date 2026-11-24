@@ -77,6 +77,7 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
       });
     }
   }
+
   // Menampilkan ringkasan isian setelah semua validasi lolos.
   void _showSummary() {
     showDialog(
@@ -98,7 +99,9 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                       : 'Selesai: ${_formatDate(_endDate!)}',
                 ),
                 Text('Deskripsi: $_description'),
-                Text('Thumbnail: ${_thumbnail.trim().isEmpty ? "-" : _thumbnail}'),
+                Text(
+                  'Thumbnail: ${_thumbnail.trim().isEmpty ? "-" : _thumbnail}',
+                ),
               ],
             ),
           ),
@@ -130,13 +133,12 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Center(
-          child: Text('Add Experience Form'),
-        ),
+        title: const Center(child: Text('Add Experience Form')),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
       ),
@@ -213,10 +215,12 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                   ),
                   initialValue: _category,
                   items: _categories.entries
-                      .map((entry) => DropdownMenuItem(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ))
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.key,
+                          child: Text(entry.value),
+                        ),
+                      )
                       .toList(),
                   onChanged: (String? newValue) {
                     setState(() {
@@ -338,11 +342,12 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                     // Opsional: kosong boleh, tapi kalau diisi harus URL valid.
                     if (value == null || value.trim().isEmpty) return null;
                     final uri = Uri.tryParse(value.trim());
-                    final isValid = uri != null &&
+                    final isValid =
+                        uri != null &&
                         (uri.scheme == 'http' || uri.scheme == 'https') &&
                         uri.host.isNotEmpty;
                     if (!isValid) {
-                                            return "URL harus diawali http:// atau https://";
+                      return "URL harus diawali http:// atau https://";
                     }
                     return null;
                   },
