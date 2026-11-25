@@ -1,34 +1,61 @@
 # myportofolio_mobile
 
+[![CI](https://github.com/davemesakh/myportofolio_mobile/actions/workflows/main.yaml/badge.svg)](https://github.com/davemesakh/myportofolio_mobile/actions/workflows/main.yaml)
+
 Aplikasi mobile portofolio pribadi berbasis **Flutter**, dibuat sebagai bagian dari Proyek Individu mata kuliah **Pemrograman Berbasis Platform (CSGE602022)**, Fasilkom UI, Semester Gasal 2026/2027.
 
-Aplikasi ini adalah perluasan dari website portofolio pribadi ke ranah mobile. Setiap minggu, fitur baru ditambahkan mengikuti topik Tutorial dan Individual Assignment.
+Aplikasi ini adalah perluasan dari website portofolio pribadi ke ranah mobile yang terintegrasi dengan backend **Django REST Framework (DRF)** melalui autentikasi token dan pipeline CI/CD GitHub Actions.
 
 | | |
 |---|---|
 | **Nama** | David Mesakh |
 | **NPM** | 2506604503 |
 | **Kelas** | PBP C |
+| **Backend Django Repo** | https://github.com/davemesakh/myportofolio |
+| **Backend API (PWS Deploy)** | https://david-mesakh-myportofolio.pws.cs.ui.ac.id |
 
 ## Fitur Saat Ini
 
-- Halaman utama (`MyHomePage`) yang dipisahkan ke `lib/menu.dart`, terpisah dari `lib/main.dart`.
-- Tiga kartu informasi (`InfoCard`): NPM, Name, dan Class.
-- Tiga tombol aksi (`ItemCard`): **Lihat Proyek**, **Tambah Proyek**, dan **Logout**, masing-masing dengan ikon dan warna berbeda (biru, hijau, merah).
-- `SnackBar` yang menampilkan pesan `Kamu telah menekan tombol [Nama Tombol]!` saat sebuah tombol ditekan.
-- Warna tombol disimpan sebagai atribut `color` pada model `ItemHomepage`, sehingga tidak ada logika `if-else` pewarnaan yang berulang.
+- Halaman utama (`MyHomePage`) dengan tiga `InfoCard` (NPM, Name, Class) dan tombol aksi portofolio (**Lihat Proyek**, **Tambah Proyek**, **Lihat Pengalaman**, **Tambah Pengalaman**, dan **Logout**).
+- Navigasi konsisten melalui `LeftDrawer` dengan status login dinamis (`Login` / `Logout`).
+- **Integrasi Backend DRF (`ApiClient` + `AuthState` via `MultiProvider`):**
+  - Operasi baca publik (`GET /api/v1/projects/` dan `GET /api/v1/experiences/`) dengan `FutureBuilder` (diinisialisasi di `initState()`), `RefreshIndicator`, serta penanganan state *loading*, *error* (tombol **Retry**), dan *empty*.
+  - Halaman detail (`ProjectDetailScreen` & `ExperienceDetailScreen`) untuk menampilkan seluruh field entri.
+  - Operasi tulis terautentikasi berbasis `Authorization: Token <key>` (`POST` untuk membuat entri baru, serta **fitur ekstra `PATCH` dan `DELETE`** pada Experience) yang dilindungi oleh `ensureLoggedIn(context)`.
+  - Penanganan `ApiException` termasuk **HTTP 401** (menghapus sesi dan mengarahkan login ulang).
+- **Model JSON & Code Generation:** `Project` dan `Experience` menggunakan `@JsonSerializable(fieldRename: FieldRename.snake)` dan `@JsonKey(includeToJson: false)` pada field read-only server.
+- **Pengujian Otomatis & CI/CD:** Unit test `ApiClient` dengan `MockClient`, ditambah workflow GitHub Actions (`.github/workflows/main.yaml`) menggunakan `very_good_workflows` dan build artefak `app-release-apk`.
 
 ## Struktur Proyek (ringkas)
 
 ```
 lib/
-├── main.dart   # Titik masuk aplikasi: runApp() dan MaterialApp
-└── menu.dart   # MyHomePage, InfoCard, ItemHomepage, ItemCard
+├── config.dart                        # Konfigurasi API_BASE_URL (--dart-define)
+├── main.dart                          # Entry point & MultiProvider (ApiClient, AuthState)
+├── models/
+│   ├── project.dart                   # Model JSON Project (@JsonSerializable)
+│   └── experience.dart                # Model JSON Experience (@JsonSerializable)
+├── services/
+│   ├── api_client.dart                # HTTP client DRF (GET, POST, PATCH, DELETE, auth)
+│   └── auth_state.dart                # State manajemen token & login/logout
+├── screens/
+│   ├── menu.dart                      # Halaman utama (MyHomePage, InfoCard)
+│   ├── login_screen.dart              # Halaman login token DRF
+│   ├── project_list_screen.dart       # Daftar proyek (GET publik)
+│   ├── project_detail_screen.dart     # Detail proyek
+│   ├── project_form.dart              # Form tambah proyek (POST terautentikasi)
+│   ├── experience_list_screen.dart    # Daftar pengalaman (GET publik)
+│   ├── experience_detail_screen.dart  # Detail pengalaman (+ Edit PATCH & Delete DELETE)
+│   └── experience_form.dart           # Form tambah/edit pengalaman (POST/PATCH terautentikasi)
+└── widgets/
+    ├── auth_guard.dart                # Helper ensureLoggedIn(context)
+    ├── left_drawer.dart               # Drawer navigasi
+    └── project_card.dart              # Kartu aksi halaman utama (ItemHomepage, ItemCard)
 ```
 
 ## Cara Menjalankan
 
-Prasyarat: Flutter SDK sudah terpasang dan `flutter doctor` tidak menunjukkan masalah pada platform yang dipakai.
+Prasyarat: Flutter SDK sudah terpasang (`flutter doctor` bersih) dan backend Django (`myportofolio`) sedang berjalan di lokal (`python manage.py runserver`) atau menggunakan URL PWS yang sudah di-deploy.
 
 ```bash
 # 1. Clone repositori
@@ -38,11 +65,23 @@ cd myportofolio_mobile
 # 2. Unduh dependensi
 flutter pub get
 
-# 3. Periksa kualitas kode (target: No issues found!)
-flutter analyze
+# 3. Generate berkas *.g.dart (wajib karena *.g.dart diabaikan di .gitignore)
+dart run build_runner build --delete-conflicting-outputs
 
-# 4. Jalankan aplikasi (contoh: di Chrome)
-flutter run -d chrome
+# 4. Verifikasi format, static analysis, dan unit test
+dart format --output=none --set-exit-if-changed .
+flutter analyze
+flutter test
+
+# 5. Jalankan aplikasi
+# - Emulator Android (default API_BASE_URL=http://10.0.2.2:8000):
+flutter run
+
+# - Chrome / Web (arah ke backend lokal):
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
+
+# - Arah ke backend PWS yang sudah di-deploy:
+flutter run -d chrome --dart-define=API_BASE_URL=https://david-mesakh-myportofolio.pws.cs.ui.ac.id
 ```
 
 Gunakan `flutter devices` untuk melihat daftar perangkat yang tersedia (Chrome, Windows, atau emulator Android).
@@ -191,6 +230,41 @@ Gunakan `flutter devices` untuk melihat daftar perangkat yang tersedia (Chrome, 
 
    Memilih jenis input atau papan ketik saja tidak cukup karena itu hanya mengatur tampilan dan kemudahan, bukan aturan data. Misalnya `keyboardType: TextInputType.url` hanya mengubah bentuk papan ketik, sehingga pengguna tetap bisa mengetik `abc`, dan validator yang memeriksa skema `http`/`https` tetap diperlukan. Begitu pula `showDatePicker()` memastikan format tanggal benar, tetapi tidak menjamin tanggal selesai tidak mendahului tanggal mulai.
 
+---
+
+### Assignment 9
+
+1. **Mengapa menggunakan `@JsonSerializable(fieldRename: FieldRename.snake)` dan `@JsonKey(includeToJson: false)` alih-alih `Map<String, dynamic>` mentah, serta bug yang dicegah pada model `Experience`:**
+
+   Menggunakan kelas model Dart bertipe kuat (`Experience`) dengan `@JsonSerializable(fieldRename: FieldRename.snake)` menjamin kontrak data antara Flutter (konvensi `camelCase`) dan Django REST Framework (konvensi `snake_case`) diperiksa secara statis saat kompilasi. Semua proses pemetaan key JSON, konversi tipe, dan nilai default dihasilkan otomatis oleh `json_serializable` di `experience.g.dart`, sehingga widget form tidak perlu merakit `Map<String, dynamic>` secara manual. Sementara itu, `@JsonKey(includeToJson: false)` memastikan field yang hanya ditetapkan atau dihitung oleh server—seperti `id`, `star_count`, `is_starred`, dan `logo_url`—tetap dibaca saat `fromJson`, tetapi tidak pernah ikut dikirim pada payload `POST`/`PATCH`.
+
+   **Contoh bug yang dicegah pada model `Experience`:** Tanpa `FieldRename.snake` dan model bertipe kuat, sangat mudah terjadi *typo* key seperti mengirim `startYear` atau `logoStaticPath` (camelCase) alih-alih `start_year` dan `logo_static_path` (snake_case), sehingga DRF diam-diam mengabaikan field tersebut dan menyimpan data kosong/null di database. Selain itu, tanpa `@JsonKey(includeToJson: false)` pada `id` (UUID read-only) atau `star_count`, klien berisiko mengirim `"id": null` atau nilai dummy saat `POST /api/v1/experiences/` yang dapat memicu error validasi atau perilaku tak terduga di serializer.
+
+2. **Mengapa `Future` untuk `FutureBuilder` harus diinisialisasi di `initState()` dan mengapa `ApiClient` melempar `ApiException` daripada mengembalikan `null`:**
+
+   Metode `build()` di Flutter bisa dipanggil berkali-kali oleh framework (misalnya saat animasi, rotasi layar, membuka `Drawer`, munculnya `SnackBar`, atau perubahan state dari `Provider`). Jika `apiClient.getExperiences()` dipanggil langsung di dalam `build()`, setiap rebuild akan menciptakan `Future` baru dan menembak permintaan HTTP GET berulang-ulang—menyebabkan tampilan berkedip (*loading flicker*), pemborosan bandwidth, dan beban berlebih ke server. Dengan menyimpannya di field `late Future<List<Experience>> _experiencesFuture` di dalam `initState()`, permintaan hanya dijalankan sekali saat layar dibuat dan baru diulang secara eksplisit ketika pengguna memicu `_reload()` (pull-to-refresh atau tombol **Retry**).
+
+   Sementara itu, melempar `ApiException(statusCode, message)` pada respons HTTP non-2xx jauh lebih aman daripada mengembalikan `null` karena:
+   - Mempertahankan informasi penting (`statusCode` dan pesan respons dari server) sehingga lapisan UI dapat membedakan penyebab kegagalan: misalnya status `401` ditangani khusus dengan menghapus sesi (`AuthState.logout()`) dan meminta login ulang, sedangkan `400`/`500` menampilkan `SnackBar` pesan error yang spesifik.
+   - Pada `FutureBuilder`, melempar exception membuat `snapshot.hasError` bernilai `true` sehingga UI otomatis menampilkan tampilan error lengkap dengan tombol **Retry**, bukan salah menganggap respons gagal sebagai daftar kosong (*empty state*).
+
+3. **Perbandingan `SessionAuthentication` (Django) vs `TokenAuthentication` (DRF) dan alasan keduanya dipakai bersama:**
+
+   | Aspek | `SessionAuthentication` (Django) | `TokenAuthentication` (DRF) |
+   |---|---|---|
+   | **Mekanisme kredensial** | Cookie `sessionid` yang dikelola browser otomatis | Header HTTP `Authorization: Token <key>` dikirim eksplisit tiap request |
+   | **State di server** | Menyimpan data session di tabel `django_session` | Menyimpan key unik per user di tabel `authtoken_token` |
+   | **Proteksi CSRF** | Memerlukan `csrftoken` untuk request mutasi (`POST`/`PATCH`/`DELETE`) | Tidak memerlukan CSRF karena token tidak dikirim otomatis oleh browser |
+   | **Cocok untuk** | Aplikasi web berbasis browser (DTL, form HTML, AJAX, Django Admin) | Klien non-browser / *decoupled* seperti aplikasi mobile Flutter atau CLI |
+
+   `myportofolio_mobile` menggunakan `TokenAuthentication` karena aplikasi mobile Flutter tidak mengandalkan *cookie jar* browser maupun mekanisme CSRF token; cukup menyimpan satu string token di `AuthState` dan menyertakannya pada header `Authorization` untuk operasi tulis (`POST`, `PATCH`, `DELETE`). Di sisi lain, `SessionAuthentication` tetap diaktifkan pada backend Django agar antarmuka web portofolio, fitur AJAX di halaman web, serta Django Admin tetap berfungsi normal bagi pengguna browser tanpa mengganggu klien mobile.
+
+4. **Peran job `build` (`very_good_workflows`) dan `build_apk` di `.github/workflows/main.yaml`, serta alasan `*.g.dart` masuk `.gitignore`:**
+
+   - **Job `build` (`VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v2`):** Bertindak sebagai gerbang kualitas (*quality gate*) otomatis di setiap `push` ke `main` dan `pull_request`. Di balik layar, workflow reusable ini menjalankan langkah `setup` (`dart run build_runner build --delete-conflicting-outputs`), memeriksa format kode (`dart format --output=none --set-exit-if-changed`), menjalankan analisis statis (`flutter analyze`), serta mengeksekusi seluruh pengujian (`flutter test`) beserta pengecekan cakupan kode (*coverage*, dengan mengecualikan `**/*.g.dart`).
+   - **Job `build_apk` (`needs: build`):** Hanya berjalan apabila job `build` lulus. Job ini meng-checkout kode, memasang Flutter sesuai versi yang di-pin, menjalankan `flutter pub get` dan `dart run build_runner build --delete-conflicting-outputs`, membangun rilis Android (`flutter build apk --release`), lalu mengunggah berkas `build/app/outputs/flutter-apk/app-release.apk` sebagai artefak `app-release-apk` yang dapat diunduh langsung dari tab GitHub Actions.
+   - **Mengapa `*.g.dart` dimasukkan ke `.gitignore` meskipun dibutuhkan CI:** Berkas `*.g.dart` adalah *build artifact* yang dihasilkan secara deterministik dari sumber model (`*.dart`). Menyimpannya di Git menimbulkan *diff* yang bising saat review, rawan *merge conflict* antar cabang, dan berisiko tidak sinkron (*stale*) dengan definisi kelas aslinya. Dengan mengecualikannya dari Git dan menjalankan `build_runner` sebagai langkah `setup` di CI, repositori tetap bersih dan kode hasil generasi selalu segar serta konsisten dengan model terbaru.
+
 
 ## AI Disclosure
 
@@ -239,3 +313,24 @@ Gunakan `flutter devices` untuk melihat daftar perangkat yang tersedia (Chrome, 
 - AI tidak dapat melihat proyek saya langsung. Instruksi seperti "tempel di antara dua baris" ternyata ambigu, dan tombol Simpan sempat tidak tertempel di posisi yang benar. Solusinya: saya mengirim isi file lengkap, lalu AI memeriksa dan memberi versi file utuh.
 - Usulan field pertama dibuat sebelum AI melihat model Django saya, sehingga perlu disesuaikan. Misalnya `started_at` ternyata `auto_now_add` dan bukan input pengguna, sehingga tanggal mulai diambil dari `start_year`/`start_month`.
 - AI tidak menjalankan aplikasi. Bug overflow baru terlihat setelah saya mengujinya di Chrome, dan bug itu sempat tampak hilang hanya karena jendela browser lebih sempit. Jadi pengujian di berbagai ukuran layar tetap harus saya lakukan sendiri.
+
+### AI Disclosure Tugas 9
+
+**Tools yang digunakan:** Antigravity (Google DeepMind coding agent) di lingkungan IDE lokal.
+
+**Strategi prompting:** Saya mengunggah PDF spesifikasi Assignment 9, meminta pemecahan pekerjaan per fase sesuai kondisi repositori saat ini, lalu mengeksekusi integrasi end-to-end untuk bagian `Experience` (model JSON, perluasan `ApiClient`, list/detail/form terautentikasi, fitur ekstra `PATCH`/`DELETE`, unit test `MockClient`, dan dokumentasi) dengan verifikasi langsung terhadap repositori backend Django lokal (`myportofolio`).
+
+**Bagian yang dibantu AI:**
+- Memeriksa kontrak `ExperienceSerializer` dan `api_views.py` di backend Django agar seluruh field `snake_case`, field read-only, dan validator URL/logo pada model `Experience` Flutter cocok 100%.
+- Menyusun `lib/models/experience.dart`, memperluas `lib/services/api_client.dart` (`GET`, `POST`, `PATCH`, `DELETE`), membangun `ExperienceListScreen` dan `ExperienceDetailScreen`, serta me-refactor `ExperienceFormPage` dengan `ensureLoggedIn(context)` dan penanganan `ApiException` (termasuk HTTP 401).
+- Menulis unit test `MockClient` di `test/api_client_test.dart` serta menyusun draf awal jawaban Pertanyaan Reflektif dan pembaruan `README.md`.
+
+**Bagian yang saya kerjakan dan verifikasi sendiri:**
+- Menentukan bagian portofolio (`Experience`) serta target fitur tambahan (`PATCH`/`DELETE` dan unit test `MockClient`).
+- Menjalankan verifikasi lokal (`build_runner`, `dart format`, `flutter analyze`, `flutter test`), pengujian end-to-end terhadap server Django lokal, serta memastikan workflow GitHub Actions hijau dan artefak `app-release-apk` dapat diunduh.
+- Meninjau seluruh perubahan kode, jawaban refleksi, dan riwayat commit sebelum push ke GitHub dan submisi di SCELE.
+
+**Analisis kritis terhadap keterbatasan AI & perbaikan manual yang diterapkan:**
+- Tanpa membaca langsung kode backend Django (`main/serializers.py` dan `main/image_utils.py`), form Assignment 8 sebelumnya menggunakan asumsi field `thumbnail` dan `start_date`/`end_date` yang ternyata berbeda dari serializer Django sebenarnya (`logo_static_path` dengan validasi HTTPS/static path, serta `start_year`/`start_month`/`end_year`/`end_month`). Verifikasi langsung ke backend mencegah error HTTP 400 saat integrasi.
+- Pemeriksaan `main/api_views.py` di backend juga mengungkap bahwa endpoint `experience_list` dan `experience_detail` dari Assignment 6 masih memasang `@authentication_classes([SessionAuthentication])` secara eksplisit, sehingga perlu diperbarui di repositori backend agar menerima `TokenAuthentication` dari Flutter.
+- Perintah shell yang digenerasi awal menggunakan operator `&&` yang tidak didukung Windows PowerShell 5.1 sehingga perlu disesuaikan dengan pemeriksaan `$LASTEXITCODE` agar alur format, analisis, dan test berjalan akurat di lingkungan Windows.
